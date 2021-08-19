@@ -1,34 +1,43 @@
 import React from 'react';
-import { ActionCard } from "../game/ActionCard";
 import { Card } from "../game/Card";
-import { ColoredActionCard } from "../game/ColoredActionCard";
-import { NumberCard } from "../game/NumberCard";
-import { StyleSheet } from 'react-native';
-import { ActionCardType } from '../game/ActionCardType';
+import { Image, StyleSheet } from 'react-native';
 
 interface CardProps {
-    card: Card
+    card?: Card
+    back?: boolean
     handleCardClick?: any
+    bigger?: boolean,
+    small?: boolean
 }
 
-export const CardComponent = ({ card, handleCardClick } : CardProps) => {
-    let cardValue;
-    if(card instanceof NumberCard) {
-        cardValue = card.value + " " + card.color;
-    } else if(card instanceof ColoredActionCard) {
-        cardValue = ActionCardType[card.type] + " " + card.color;
-    } else if(card instanceof ActionCard) {
-        cardValue = ActionCardType[card.type];
-    }
+const imageWrapperStyle = {
+    overflow: 'hidden'
+}
+
+export const CardComponent = ({ card, small, bigger, back, handleCardClick } : CardProps) => {
+    const cardImage = back || !card ? 
+        require('../images/cards/back.png') :
+        require('../images/cards/' + card?.image);
+        
+    const cardImageStyle = small ? styles.cardImageSmall : bigger ? styles.cardImageBig : styles.cardImage;
     return (
-        <div onClick={() => handleCardClick && handleCardClick(card)} style={{borderRadius: '20px', border: '1px solid black', padding: '10px'}}>
-            { cardValue }
+        <div style={imageWrapperStyle} onClick={() => handleCardClick && handleCardClick(card)}>
+            <Image style={cardImageStyle} source={cardImage} />
         </div>
     );
 }
 
 const styles = StyleSheet.create({
-    card: {
-        borderRadius: 20
+    cardImageSmall: {
+        width: 30,
+        height: 45
+    },
+    cardImage: {
+        width: 60,
+        height: 90
+    },
+    cardImageBig: {
+        width: 80,
+        height: 120
     }
 });

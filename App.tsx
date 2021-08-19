@@ -1,84 +1,35 @@
-import React, { useState } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
-import { CardComponent } from './app/components/CardComponent';
-import { GameFactory } from './app/game/GameFactory';
-import { OtherCards } from './app/game/OtherCards';
-import { Card } from './app/game/Card';
-import { useEffect } from 'react';
-import { Game } from './app/game/Game';
-import { Player } from './app/game/Player';
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { HomePage } from './app/pages/Home';
+import { GamePage } from './app/pages/GamePage';
+import { SettingsPage } from './app/pages/Settings';
+import { MultiPlayerJoinFormPage } from './app/pages/MultiPlayerJoinForm';
+import { MultiPlayerCreateFormPage } from './app/pages/MultiPlayerCreateForm';
+import { MultiPlayerSelectPage } from './app/pages/MultiplayerSelect';
+import { SinglePlayerFormPage } from './app/pages/SinglePlayerForm';
+import { MultiPlayerWaitPage } from './app/pages/MultiplayerWait';
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [cards, updateCards] = useState([] as Card[]);
-  const [lastCard, updateLastCard] = useState({} as Card);
-  const [game, updateGame] = useState({} as Game);
-  const [otherPlayers, updateOtherPlayers] = useState([] as Player[]);
-  
-  useEffect(() => {
-    const game = GameFactory.createGame();
-    updateGame(game);
-    updateCards(game.getMyCards());
-    updateLastCard(game.getLastDiscardedCard());
-    updateOtherPlayers(game.getOtherPlayers());
-  }, []);
-
-  const handleCardClick = (card: Card) => {
-    game.addMove(card, {});
-    updateCards(game.getMyCards());
-    updateLastCard(game.getLastDiscardedCard());
-    updateOtherPlayers(game.getOtherPlayers());
-  };
-
-  const takeCard = () => {
-    game.addMove(null, {});
-    updateCards(game.getMyCards());
-  }
-
-  const cardComponents = cards.map((card, index) => (
-    <CardComponent handleCardClick={handleCardClick} key={index} card={card} />
-  ));
-
-  const playersComponents = otherPlayers.map((player, index) => (
-    <div key={index}>
-      <p>{player.name}</p>
-      <div style={{display: 'flex', flexFlow: 'row wrap'}}>
-        {
-          player.cards.map((card, indexCard) => (
-            <CardComponent handleCardClick={handleCardClick} key={indexCard} card={card} />
-          ))
-        }
-      </div>
-    </div>
-  ));
 
   return (
-    <View style={styles.container}>
-      <div>
-        { playersComponents }
-      </div>
-      <br />
-      <div onClick={() => takeCard()} style={{border: '1px solid black', padding: '10px', display: 'flex', flexFlow: 'row wrap'}}>
-        Take card
-      </div>
-      <br />
-      <div style={{display: 'flex', flexFlow: 'row wrap'}}>
-        Last: <CardComponent card={lastCard} />
-      </div>
-      <br />
-      <div style={{display: 'flex', flexFlow: 'row wrap'}}>
-        { cardComponents }
-      </div>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Home"
+          component={HomePage}
+          options={{ title: 'Home' }}
+        />
+        <Stack.Screen name="SinglePlayerForm" component={SinglePlayerFormPage} />
+        <Stack.Screen name="MultiPlayerSelect" component={MultiPlayerSelectPage} />
+        <Stack.Screen name="MultiPlayerWait" component={MultiPlayerWaitPage} />
+        <Stack.Screen name="MultiPlayerCreateForm" component={MultiPlayerCreateFormPage} />
+        <Stack.Screen name="MultiPlayerJoinForm" component={MultiPlayerJoinFormPage} />
+        <Stack.Screen name="Settings" component={SettingsPage} />
+        <Stack.Screen name="Game" component={GamePage} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

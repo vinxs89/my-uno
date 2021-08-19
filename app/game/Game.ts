@@ -6,7 +6,6 @@ import { Color } from "./Color";
 import { MoveActionType } from "./MoveActionType";
 import { MoveResult } from "./MoveResult";
 import { MoveUtils } from "./MoveUtils";
-import { OtherCards } from "./OtherCards";
 import { Player } from "./Player";
 
 export class Game {
@@ -20,6 +19,7 @@ export class Game {
 
     private currentColor: Color;
     private currentNumber?: number;
+    private currentType?: ActionCardType;
 
     constructor(players: Player[], originalCards: Card[], firstPlayer: number, gamePlayer: number) {
         this.players = players;
@@ -37,9 +37,10 @@ export class Game {
         this.discardDeck.push(cards.shift() as Card);
         this.cardDeck = cards;
 
-        const {color, number, nextPlayer} = this.getCardValues(this.discardDeck[0]);
+        const {color, number, type, nextPlayer} = this.getCardValues(this.discardDeck[0]);
         this.currentColor = color;
         this.currentNumber = number;
+        this.currentType = type;
     }
 
     public addMove(card: Card | null, optionals: any): MoveResult {
@@ -53,7 +54,7 @@ export class Game {
             this.nextPlayer();
             return new MoveResult(player, player, [MoveActionType.TAKE_CARD]);
         }
-        if (!MoveUtils.isValidMove(card, this.currentColor, this.currentNumber)) {
+        if (!MoveUtils.isValidMove(card, this.currentColor, this.currentNumber, this.currentType)) {
             console.log("not valid");
             return new MoveResult(player, player, [MoveActionType.NOT_VALID_MOVE]);
         }
@@ -70,27 +71,31 @@ export class Game {
         } else if (card instanceof ActionCard) { 
             if (card.type === ActionCardType.SWITCH_COLOR) {
                 this.nextPlayer();
-                const { color, number } = this.getCardValues(card);
+                const { number, type } = this.getCardValues(card);
                 this.currentNumber = number;  
                 this.currentColor = optionals.color;
+                this.currentType = type;
                 actions.push(MoveActionType.SWITCH_COLOR);
             } else if (card.type === ActionCardType.ROTATE) {
-                const { color, number } = this.getCardValues(card);
+                const { color, number, type } = this.getCardValues(card);
                 this.currentColor = color;
-                this.currentNumber = number;  
+                this.currentNumber = number; 
+                this.currentType = type; 
                 this.ahead = !this.ahead;
                 this.rotatePlayer();
                 actions.push(MoveActionType.CHANGE_DIRECTION);
             } else if (card.type === ActionCardType.STOP) {
-                const { color, number } = this.getCardValues(card);
+                const { color, number, type } = this.getCardValues(card);
                 this.currentColor = color;
                 this.currentNumber = number;  
+                this.currentType = type;
                 this.skipPlayer();
                 actions.push(MoveActionType.STOP);
             } else if (card.type === ActionCardType.MORE4) {
-                const { color, number } = this.getCardValues(card);
+                const { color, number, type } = this.getCardValues(card);
                 this.currentNumber = number;  
                 this.currentColor = optionals.color;
+                this.currentType = type;
                 this.nextPlayer();
                 this.players[this.currentPlayer].receiveCard(this.cardDeck.shift() as Card);
                 this.players[this.currentPlayer].receiveCard(this.cardDeck.shift() as Card);
@@ -98,9 +103,10 @@ export class Game {
                 this.players[this.currentPlayer].receiveCard(this.cardDeck.shift() as Card);
                 actions.push(MoveActionType.ADD_4_CARDS);
             } else if (card.type === ActionCardType.MORE2) {
-                const { color, number } = this.getCardValues(card);
+                const { color, number, type } = this.getCardValues(card);
                 this.currentColor = color;
                 this.currentNumber = number;  
+                this.currentType = type;
                 this.nextPlayer();
                 this.players[this.currentPlayer].receiveCard(this.cardDeck.shift() as Card);
                 this.players[this.currentPlayer].receiveCard(this.cardDeck.shift() as Card);
@@ -129,7 +135,7 @@ export class Game {
     }
 
     private rotatePlayer() {
-        this.currentPlayer = (this.currentPlayer - 1) % this.players.length;
+        this.currentPlayer = (this.currentPlayer + this.players.length - 1) % this.players.length;
         console.log("Next player: " + this.players[this.currentPlayer].name);
     }
 
@@ -142,6 +148,7 @@ export class Game {
         return {
             color: CardUtils.getCardColor(card),
             number: CardUtils.getCardNumber(card),
+            type: CardUtils.getCardType(card),
         };
     }
 }
