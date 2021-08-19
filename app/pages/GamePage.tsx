@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { CardComponent } from '../components/CardComponent';
-import { GameFactory } from '../game/GameFactory';
+import { useToast } from "react-native-toast-notifications";
 import { Card } from '../game/Card';
 import { Game } from '../game/Game';
 import { Player } from '../game/Player';
 import { GameRouteProp, GameNavigationProp } from '../RouteProps';
-import io from 'socket.io-client';
 import { CardUtils } from '../game/CardUtils';
+import { ActionCard } from '../game/ActionCard';
+import { ColoredActionCard } from '../game/ColoredActionCard';
+import { Color } from '../game/Color';
+import { MoveActionType } from '../game/MoveActionType';
 
 type Props = {
     route: GameRouteProp;
@@ -15,93 +18,141 @@ type Props = {
 
 const deck = CardUtils.createDeck();
 
+type ServerPlayer = {
+  id: string;
+  name: string;
+}
+
+const game = new Game();
+
 export const GamePage = ( {route, navigation}: Props ) => {
+    const toast = useToast();
+
+    const [temporaryCard, updateTemporaryCard] = useState(null as unknown as Card | null);
     const [cards, updateCards] = useState([] as Card[]);
     const [lastCard, updateLastCard] = useState(undefined as unknown as Card);
-    const [game, updateGame] = useState(undefined as unknown as Game);
     const [otherPlayers, updateOtherPlayers] = useState([] as Player[]);
-    const [gameStarted, updateGameStarted] = useState(false);
-    const [socket, setSocket]: [any, any] = useState(null);
+    const [currentPlayerId, updateCurrentPlayerId] = useState(null as unknown as string);
+    const [showSelectColorModal, updateShowSelectColorModal] = useState(false);
+    const [matchActive, updateMatchActive] = useState(false);
 
-    
+    const { playerId, roomCode, socket } = route.params;
+
+    const nextPlayer = (player: ServerPlayer) => {
+      if(playerId === player.id) {
+        toast.show('Now it\'s your turn', {duration: 1000});
+      } else {
+        toast.show('Now it\'s the turn of ' + player.name, {duration: 1000});
+      }
+      updateCurrentPlayerId(player.id);
+    }
+
     useEffect(() => {
-      const newSocket = io("http://localhost:3005", { transports: ["websocket"] });
-      setSocket(newSocket);
-
-      newSocket.io.on("reconnect_attempt", () => {
-        console.log("reconnect_attemp");
-      });
-      
-      newSocket.io.on("reconnect", () => {
-        console.log("reconnect");
-      });
-
-      newSocket.io.on("error", (e) => {
-        console.log(e);
-      });
-
-      newSocket.io.on("reconnect_error", (e) => {
-        console.log(e);
-      });
-
-      newSocket.io.on("reconnect_failed", () => {
-        console.log("failed reconnect");
-      });
-
-      newSocket.on('create-game', (playersIds: string[], cardIds: string[]) => {
+      socket.on('create-game', (serverPlayers: ServerPlayer[], cardIds: string[]) => {
         const cards = cardIds.map(id => deck.find(card => id === card.id) as Card);
-        const players = playersIds.map(id => new Player(id));
-        const game = GameFactory.createGame(players, cards)
-        updateGame(game);
+        const players = serverPlayers.map(player => new Player(player.id, player.name));
+
+        game.start(players, cards, playerId);
+
         updateCards(game.getMyCards());
         updateLastCard(game.getLastDiscardedCard());
         updateOtherPlayers(game.getOtherPlayers());
-        updateGameStarted(true);
-
-        
-        newSocket.on('new-move', (cardId: string) => {
-          game.addMove(deck.find(card => card.id === cardId) as Card, {});
-          updateCards(game.getMyCards());
-          updateLastCard(game.getLastDiscardedCard());
-          updateOtherPlayers(game.getOtherPlayers());
-        });
       });
 
+      socket.on('new-move', (cardId: string, color: string) => {
+        const moveResult = game.addMove(deck.find(card => card.id === cardId) as Card, { color });
+        updateCards(game.getMyCards());
+        updateLastCard(game.getLastDiscardedCard());
+        updateOtherPlayers(game.getOtherPlayers());
+        
+        const player = game.getCurrentPlayer();
+
+        if (moveResult.actions.indexOf(MoveActionType.WIN) >= 0) {
+          if(playerId === player.id) {
+            toast.show('You Win!!!', {duration: 3000});
+          } else {
+            toast.show(player.name + ' WIN this match!', {duration: 3000});
+          }
+
+          updateMatchActive(false);
+        }
+
+        if (color) {
+          toast.show("Next color will be: " + color, {duration: 3000});
+        }
+
+        nextPlayer(player)
+      });
+
+      socket.on('set-first-player', (player: ServerPlayer) => {
+        game.setFirstPlayer(player.id);
+        nextPlayer(player);
+      });
+
+      socket.emit('game-ready', roomCode, playerId);
+
       return () => {
-        newSocket.off('new-move');
-        newSocket.off('create-game');
-        newSocket.close();
+        socket.off('new-move');
+        socket.off('create-game');
       }
     }, []);
 
     const handleCardClick = (card: Card) => {
-      socket.emit('new-move', card);
+      if ( playerId !== currentPlayerId ) {
+        toast.show('Not now', {duration: 1000});
+      } else {
+        if(!game.isValidMove(card)) {
+          toast.show('Not a valid move', {duration: 1000});
+          return;
+        }
+        if (card instanceof ActionCard && !(card instanceof ColoredActionCard)) {
+          updateShowSelectColorModal(true);
+          updateTemporaryCard(card);
+        } else {
+          socket.emit('new-move', roomCode, card.id);
+        }
+      }
     };
   
+    const selectedColorFromModal = (color: Color, card: Card) => {
+      updateShowSelectColorModal(false);
+      updateTemporaryCard(null);
+      socket.emit('new-move', roomCode, card.id, Color[color]);
+    }
+
     const takeCard = () => {
-      socket.emit('new-move', null);
+      if ( playerId !== currentPlayerId ) {
+        toast.show('Not now', {duration: 1000});
+      } else {
+        socket.emit('new-move', roomCode, null);
+      }
     }
   
-    const cardComponents = cards?.map((card, index) => (
-      <CardComponent handleCardClick={handleCardClick} key={index} card={card} />
+    const cardComponents = cards?.map(card => (
+      <CardComponent handleCardClick={handleCardClick} key={card.id} card={card} />
     ));
-  
-    const startGame = () => {
-      socket.emit('start-game');
-    };
 
-    const playersComponents = otherPlayers?.map((player, index) => (
-      <div key={index}>
+    const playersComponents = otherPlayers?.map(player => (
+      <div key={player.id}>
         <div style={{display: 'flex', flexFlow: 'row wrap'}}>
         {player.name}: 
           {
-            player.cards?.map((card, indexCard) => (
-              <CardComponent handleCardClick={handleCardClick} key={indexCard} card={card} small={true} back={false} />
+            player.cards?.map(card => (
+              <CardComponent key={card.id} card={card} small={true} back={true} />
             ))
           }
         </div>
       </div>
     ));
+
+    const selectColorModal = (
+      <div>
+        <div onClick={() => selectedColorFromModal(Color.BLUE, temporaryCard as Card)}>Blue</div>
+        <div onClick={() => selectedColorFromModal(Color.RED, temporaryCard as Card)}>Red</div>
+        <div onClick={() => selectedColorFromModal(Color.YELLOW, temporaryCard as Card)}>Yellow</div>
+        <div onClick={() => selectedColorFromModal(Color.GREEN, temporaryCard as Card)}>Green</div>
+      </div>
+    );
 
     return (
         <div style={styles.table}>
@@ -114,16 +165,13 @@ export const GamePage = ( {route, navigation}: Props ) => {
               <CardComponent card={lastCard} bigger={true} />
             </div>
 
+            { showSelectColorModal ? selectColorModal : '' }
+
             <div style={styles.ownCards}>
               <div style={styles.cardGroup}>
                   { cardComponents }
               </div>
             </div>
-
-            {
-              !gameStarted && <div onClick={() => startGame()}>Start Game</div>
-            }
-            
         </div>
     )
 }

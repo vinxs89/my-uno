@@ -1,5 +1,6 @@
 import React from "react"
 import { Button } from "react-native"
+import { CardUtils } from "../game/CardUtils";
 import { HomeRouteProp, HomeNavigationProp } from "../RouteProps";
 
 type Props = {
@@ -8,10 +9,12 @@ type Props = {
 };
 
 export const HomePage = ( { route, navigation }: Props) => {
+    const cards = CardUtils.createDeck()
+    console.log(cards.map(c => c.id).toString());
     return (
         <div>
             <Button
-                onPress={() => navigation.navigate("Game")}
+                onPress={() => navigation.navigate("SinglePlayerForm")}
                 title="Single Player"
                 color="#841584"
                 accessibilityLabel="Partita Singola"
