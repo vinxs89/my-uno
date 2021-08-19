@@ -7,21 +7,22 @@ interface CardProps {
     back?: boolean
     handleCardClick?: any
     bigger?: boolean,
-    small?: boolean
+    small?: boolean,
+    last?: boolean
 }
 
 const imageWrapperStyle = {
     overflow: 'hidden'
 }
 
-export const CardComponent = ({ card, small, bigger, back, handleCardClick } : CardProps) => {
+export const CardComponent = ({ card, small, bigger, back, last, handleCardClick } : CardProps) => {
     const cardImage = back || !card ? 
         require('../images/cards/back.png') :
         require('../images/cards/' + card?.image);
         
     const cardImageStyle = small ? styles.cardImageSmall : bigger ? styles.cardImageBig : styles.cardImage;
     return (
-        <div style={imageWrapperStyle} onClick={() => handleCardClick && handleCardClick(card)}>
+        <div style={!last ? imageWrapperStyle : {}} onClick={() => handleCardClick && handleCardClick(card)}>
             <Image style={cardImageStyle} source={cardImage} />
         </div>
     );
@@ -33,11 +34,11 @@ const styles = StyleSheet.create({
         height: 45
     },
     cardImage: {
-        width: 60,
-        height: 90
+        width: 50,
+        height: 75
     },
     cardImageBig: {
-        width: 80,
-        height: 120
+        width: 60,
+        height: 90
     }
 });

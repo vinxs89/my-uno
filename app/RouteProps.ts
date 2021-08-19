@@ -1,5 +1,6 @@
 import { RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { Socket } from 'socket.io-client';
 
 type RootStackParamList = {
     Home: undefined;
@@ -7,9 +8,18 @@ type RootStackParamList = {
     MultiPlayerCreateForm: undefined;
     MultiPlayerJoinForm: undefined;
     MultiPlayerSelect: undefined;
-    MultiPlayerWait: undefined;
+    MultiPlayerWait: {
+      owner: boolean,
+      name: string,
+      playersCount?: number,
+      roomCode?: string
+    };
     Settings: undefined;
-    Game: undefined;
+    Game: {
+      playerId: string,
+      roomCode: string,
+      socket: Socket
+    };
 };
 
 export type HomeRouteProp = RouteProp<RootStackParamList, 'Home'>;

@@ -38,15 +38,6 @@ export const GamePage = ( {route, navigation}: Props ) => {
 
     const { playerId, roomCode, socket } = route.params;
 
-    const nextPlayer = (player: ServerPlayer) => {
-      if(playerId === player.id) {
-        toast.show('Now it\'s your turn', {duration: 1000});
-      } else {
-        toast.show('Now it\'s the turn of ' + player.name, {duration: 1000});
-      }
-      updateCurrentPlayerId(player.id);
-    }
-
     useEffect(() => {
       socket.on('create-game', (serverPlayers: ServerPlayer[], cardIds: string[]) => {
         const cards = cardIds.map(id => deck.find(card => id === card.id) as Card);
@@ -81,12 +72,14 @@ export const GamePage = ( {route, navigation}: Props ) => {
           toast.show("Next color will be: " + color, {duration: 3000});
         }
 
-        nextPlayer(player)
+        updateCurrentPlayerId(player.id);
+        shotToastCurrentTurn(player)
       });
 
       socket.on('set-first-player', (player: ServerPlayer) => {
         game.setFirstPlayer(player.id);
-        nextPlayer(player);
+        updateCurrentPlayerId(player.id);
+        shotToastCurrentTurn(player);
       });
 
       socket.emit('game-ready', roomCode, playerId);
@@ -96,6 +89,14 @@ export const GamePage = ( {route, navigation}: Props ) => {
         socket.off('create-game');
       }
     }, []);
+
+    const shotToastCurrentTurn = (player: ServerPlayer) => {
+      if(playerId === player.id) {
+        toast.show('Now it\'s your turn', {duration: 1000});
+      } else {
+        toast.show('Now it\'s the turn of ' + player.name, {duration: 1000});
+      }
+    }
 
     const handleCardClick = (card: Card) => {
       if ( playerId !== currentPlayerId ) {
@@ -128,14 +129,15 @@ export const GamePage = ( {route, navigation}: Props ) => {
       }
     }
   
-    const cardComponents = cards?.map(card => (
-      <CardComponent handleCardClick={handleCardClick} key={card.id} card={card} />
+    const cardComponents = cards?.map((card, i, arr) => (
+      <CardComponent handleCardClick={handleCardClick} key={card.id} card={card} last={i === arr.length - 1} />
     ));
 
-    const playersComponents = otherPlayers?.map(player => (
-      <div key={player.id}>
-        <div style={{display: 'flex', flexFlow: 'row wrap'}}>
-        {player.name}: 
+    const playerStyles = [styles.topPlayer, styles.topLeftPlayer, styles.topRightPlayer, styles.leftBottomPlayer, styles.rightBottomPlayer];
+    const playersComponents = otherPlayers?.map((player, index) => (
+      <div key={player.id} style={playerStyles[index]}>
+        <p>{player.name}</p>
+        <div style={{display: 'flex', flexFlow: 'row nowrap', width: '100%'}}> 
           {
             player.cards?.map(card => (
               <CardComponent key={card.id} card={card} small={true} back={true} />
@@ -146,12 +148,24 @@ export const GamePage = ( {route, navigation}: Props ) => {
     ));
 
     const selectColorModal = (
-      <div>
-        <div onClick={() => selectedColorFromModal(Color.BLUE, temporaryCard as Card)}>Blue</div>
-        <div onClick={() => selectedColorFromModal(Color.RED, temporaryCard as Card)}>Red</div>
-        <div onClick={() => selectedColorFromModal(Color.YELLOW, temporaryCard as Card)}>Yellow</div>
-        <div onClick={() => selectedColorFromModal(Color.GREEN, temporaryCard as Card)}>Green</div>
+      <div style={styles.modalContainer}>
+        <p style={styles.modalTitle}>Choose next color</p>
+        <div style={styles.colorContainer}>
+          <div style={styles.colorBox} onClick={() => selectedColorFromModal(Color.BLUE, temporaryCard as Card)}>
+            <div style={{width: '100%', height:'100%', backgroundColor: '#5555ff'}} />
+          </div>
+          <div style={styles.colorBox} onClick={() => selectedColorFromModal(Color.RED, temporaryCard as Card)}>
+            <div style={{width: '100%', height:'100%', backgroundColor: '#ff5555'}} />
+          </div>
+          <div style={styles.colorBox} onClick={() => selectedColorFromModal(Color.YELLOW, temporaryCard as Card)}>
+            <div style={{width: '100%', height:'100%', backgroundColor: '#ffaa00'}} />
+          </div>
+          <div style={styles.colorBox} onClick={() => selectedColorFromModal(Color.GREEN, temporaryCard as Card)}>
+            <div style={{width: '100%', height:'100%', backgroundColor: '#55aa55'}} />
+          </div>
+        </div>
       </div>
+
     );
 
     return (
@@ -177,6 +191,86 @@ export const GamePage = ( {route, navigation}: Props ) => {
 }
 
 const styles = {
+  topPlayer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    width: '120px',
+    position: 'fixed',
+    left: 'calc(50% - 60px)',
+    top: '50px'
+  },
+  topLeftPlayer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    transform: 'rotate(-45deg)',
+    width: '120px',
+    position: 'fixed',
+    left: '10px',
+    top: '100px'
+  },
+  topRightPlayer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    transform: 'rotate(45deg)',
+    width: '120px',
+    position: 'fixed',
+    right: '10px',
+    top: '100px'
+  },
+  leftBottomPlayer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    transform: 'rotate(-135deg)',
+    width: '120px',
+    position: 'fixed',
+    left: '10px',
+    bottom: '20px'
+  },
+  rightBottomPlayer: {
+    alignItems: 'center',
+    display: 'flex',
+    flexFlow: 'column wrap',
+    transform: 'rotate(135deg)',
+    width: '120px',
+    position: 'fixed',
+    right: '10px',
+    bottom: '20px'
+  },
+  modalContainer: {
+    width: '70%',
+    height: '250px',
+    backgroundColor: 'white',
+    padding: '5px',
+    display: 'flex',
+    flexFlow: 'column nowrap',
+    alignItems: 'center',
+    position: 'fixed',
+    left: '15%',
+    top: '35%',
+    border: '1px solid #ccc'
+  },
+  modalTitle: {
+    fontSize: '1.5em',
+    margin: '10px 0'
+  },
+  colorContainer: {
+    display: 'flex',
+    flexFlow: 'row wrap',
+    margin: 'auto',
+    padding: '5px',
+    boxSizing: 'border-box',
+    width: '100%',
+    height: '100%'
+  },
+  colorBox: {
+    flex: '0 0 50%',
+    padding: '5px',
+    boxSizing: 'border-box'
+  },
   table: {
     display: 'flex',
     flexFlow: 'column nowrap',

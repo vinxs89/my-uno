@@ -1,10 +1,10 @@
-import { MultiPlayerWaitRouteProp, MultiPlayerWaitNavigationProp } from "../RouteProps";
-import React from "react"
-import { useEffect } from "react";
-import { useState } from "react";
+import React, { useEffect, useState } from "react"
+import { View, Pressable, Text } from "react-native";
 import { io, Socket } from "socket.io-client";
-import { Button } from "react-native";
 import {v4 as uuidv4} from 'uuid';
+
+import { MultiPlayerWaitRouteProp, MultiPlayerWaitNavigationProp } from "../RouteProps";
+import { formStyles } from '../styles'
 
 type Props = {
     route: MultiPlayerWaitRouteProp;
@@ -17,7 +17,7 @@ type ServerPlayer = {
 }
 
 export const MultiPlayerWaitPage = ( {route, navigation}: Props ) => {
-    const { owner, name, playersCount }: { owner: boolean, name: string, roomCode?: number, playersCount?: number} = route.params;
+    const { owner, name, playersCount } = route.params;
     const [socket, setSocket] = useState(null as unknown as Socket);
     const [players, updatePlayers] = useState([] as ServerPlayer[]);
     const [roomCode, updateRoomCode] = useState(route.params.roomCode);
@@ -27,7 +27,8 @@ export const MultiPlayerWaitPage = ( {route, navigation}: Props ) => {
     };
 
     useEffect(() => {
-        const newSocket = io("http://localhost:3005", { transports: ["websocket"] });
+        const newSocket = io("http://uno-back.herokuapp.com", { transports: ["websocket"] });
+        
         setSocket(newSocket);
   
         newSocket.io.on("reconnect_attempt", () => {
@@ -71,9 +72,15 @@ export const MultiPlayerWaitPage = ( {route, navigation}: Props ) => {
         }
     }, []);
 
+    const button = owner && playersCount ? (
+        <Pressable disabled={players.length < playersCount} style={players.length < playersCount ? formStyles.buttonDisabled : formStyles.button} onPress={() => startGame(roomCode as string)}>
+            <Text style={formStyles.buttonText}>Start Game</Text>
+        </Pressable>
+    ) : '';
+
     return (
-        <div>
-            <h3>Room Code: {roomCode}</h3>
+        <View style={{width: '70%', margin: 'auto'}}>
+            <Text>Room Code: {roomCode}</Text>
             <ul>
                 {
                     players.map(player => (
@@ -81,10 +88,8 @@ export const MultiPlayerWaitPage = ( {route, navigation}: Props ) => {
                     ))
                 }
             </ul>
-            {
-                owner && playersCount  ? <Button onPress={() => startGame(roomCode)} title="Inizia" disabled={players.length < playersCount} /> : ''
-            }
-            
-        </div>
+
+            { button }
+        </View>
     )
 }

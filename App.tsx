@@ -17,14 +17,14 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <NavigationContainer>
-        <Stack.Navigator>
+      <NavigationContainer >
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen
             name="Home"
             component={HomePage}
             options={{ title: 'Home' }}
           />
-          <Stack.Screen name="SinglePlayerForm" component={SinglePlayerFormPage} />
+          <Stack.Screen options={{ orientation: "landscape" }} name="SinglePlayerForm" component={SinglePlayerFormPage} />
           <Stack.Screen name="MultiPlayerSelect" component={MultiPlayerSelectPage} />
           <Stack.Screen name="MultiPlayerWait" component={MultiPlayerWaitPage} />
           <Stack.Screen name="MultiPlayerCreateForm" component={MultiPlayerCreateFormPage} />
